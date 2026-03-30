@@ -19,7 +19,6 @@ InstruMatic is a smart assistant for home equipment maintenance. Use AI to autom
 ## 📋 Requirements
 
 - Home Assistant 2023.1.0 or newer
-- Access to InstruMatic backend (local or cloud)
 
 ## 🚀 Installation
 
