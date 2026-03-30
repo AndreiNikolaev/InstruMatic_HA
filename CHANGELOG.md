@@ -33,8 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 | Version | Date | Description |
 |---------|------|-------------|
-| 1.1.3 | 2026-03-30 | HACS publishing preparation, security improvements |
-| 1.1.2 | 2026-03-15 | Initial HA integration release |
+| 1.1.3 | 2026-03-15 | Initial HA integration release |
 
 ---
 
