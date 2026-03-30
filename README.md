@@ -43,9 +43,7 @@ InstruMatic is a smart assistant for home equipment maintenance. Use AI to autom
 
 ![Upcoming Tasks](assets/screenshots/upcoming_tasks.png)
 
-
-
-### AI-Powered Equipment Setup Wizard
+### List of Equipment Tasks
 
 ![Add Equipment with AI](assets/screenshots/add_equipment.png)
 
