@@ -16,3 +16,4 @@ STORAGE_KEY = "instrumatic.storage"
 # AI Backend configuration
 
 BACKEND_URL = "https://api.instrumatic.ru/"  # Cloud backend
+#BACKEND_URL = "http://192.168.50.183:8000"

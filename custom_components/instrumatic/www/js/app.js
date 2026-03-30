@@ -802,7 +802,7 @@ const app = createApp({
         const haSearchQuery = ref('');
         const processingMessage = ref('');
         const processingProgress = ref(0);
-        const manualForm = ref({ name: '', brand: '', model: '', type: '', location: '', installationDate: dayjs().format('YYYY-MM-DD'), pdfUrl: '', hasFile: false });
+        const manualForm = ref({ name: '', brand: '', model: '', type: '', location: '', installationDate: dayjs().format('YYYY-MM-DD'), pdfUrl: '' });
 
         const isProcessing = computed(() => wizardState.value === 'processing');
 
@@ -834,7 +834,7 @@ const app = createApp({
                 wizardTab.value = 'ai';
                 wizardIsExpanded.value = false;
                 wizardData.value = { modelName: '', pdfUrl: '' };
-                manualForm.value = { name: '', brand: '', model: '', type: '', location: data.value.locations[0]?.name || '', installationDate: dayjs().format('YYYY-MM-DD'), pdfUrl: '', hasFile: false };
+                manualForm.value = { name: '', brand: '', model: '', type: '', location: data.value.locations[0]?.name || '', installationDate: dayjs().format('YYYY-MM-DD'), pdfUrl: '' };
                 haSearchQuery.value = '';
             }
             refreshAiStatus();
@@ -883,31 +883,6 @@ const app = createApp({
                 (dev.area || '').toLowerCase().includes(query)
             );
         });
-
-        const triggerPdfUpload = () => {
-            if (isProcessing.value) return;
-            const input = document.getElementById('pdf-upload');
-            if (input) input.click();
-        };
-
-        const handlePdfUpload = async (event) => {
-            if (isProcessing.value) return;
-            const file = event.target.files[0]; if (!file) return;
-            wizardState.value = 'processing';
-            wizardData.value.pdfUrl = ''; // Local file has no URL
-            processingMessage.value = t('frontend.preparing_msg') || 'Подготовка...';
-            try {
-                const arrayBuffer = await file.arrayBuffer();
-                const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
-                let fullText = "";
-                for (let i = 1; i <= pdf.numPages; i++) {
-                    const page = await pdf.getPage(i);
-                    const textContent = await page.getTextContent();
-                    fullText += textContent.items.map(item => item.str).join(" ") + "\n";
-                }
-                await startAnalysis(fullText);
-            } catch (e) { alert("PDF Error: " + e.message); wizardState.value = 'idle'; }
-        };
 
         const processUrl = async (url) => {
             if (isProcessing.value) return;
@@ -1076,8 +1051,7 @@ const app = createApp({
                 type: dev.type || '',
                 location: dev.area || '',
                 installationDate: dayjs().format('YYYY-MM-DD'),
-                pdfUrl: '',
-                hasFile: false
+                pdfUrl: ''
             };
             wizardData.value.modelName = [dev.brand, dev.model].filter(x => x).join(' ') || dev.name;
             wizardTab.value = 'manual';
@@ -1411,7 +1385,7 @@ const app = createApp({
             filteredEquipment, equipmentWithDates, currentItem, currentTasks, currentComponents, currentHistory, dayjs,
             getStatusClass, getStatusColor, openDetails, editEquipment, copyEquipment, saveEquipment, deleteEquipment, deleteEquipmentDirect,
             openTaskEdit, saveTask, deleteTask, deleteTaskDirect, openMaterialEdit, saveMaterial, deleteMaterial, deleteMaterialDirect,
-            openCompleteTask, submitCompletion, openWizard, closeWizard, handlePdfUpload, triggerPdfUpload, processUrl, selectHaDevice, saveManual,
+            openCompleteTask, submitCompletion, openWizard, closeWizard, processUrl, selectHaDevice, saveManual,
             addTaskMaterial, removeTaskMaterial, addUsedMaterial, removeUsedMaterial, calculateGrandTotal, openHistoryEdit, deleteHistoryEntry, deleteHistoryEntryDirect,
             refreshHaDevices, abortAnalysis,
             showReportModal, isReportGenerated, reportForm, reportResults, reportTotalCost, openReportDialog, generateReport,

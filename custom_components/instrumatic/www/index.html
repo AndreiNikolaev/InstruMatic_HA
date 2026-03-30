@@ -1269,7 +1269,7 @@
                                 </div>
                             </div>
 
-                            <!-- PDF Upload Card -->
+                            <!-- PDF Link Input -->
                             <div class="inner-card">
                                 <div class="section-header">{{ t('frontend.upload_instruction_pdf_header') }}</div>
                                 <div style="display: flex; gap: 8px; margin-bottom: 12px;">
@@ -1278,13 +1278,6 @@
                                         <span class="material-icons">link</span>
                                     </button>
                                 </div>
-                                <input type="file" id="pdf-upload" accept=".pdf" style="display: none" @change="handlePdfUpload">
-                                <button class="btn-primary" style="width: 100%; background: rgba(3,169,244,0.1); color: var(--ha-primary-color);" @click="triggerPdfUpload" :disabled="!wizardData.modelName">
-                                    <div style="display: flex; align-items: center; justify-content: center; gap: 8px;">
-                                        <span class="material-icons">file_upload</span>
-                                        {{ t('frontend.choose_file_from_phone') }}
-                                    </div>
-                                </button>
                             </div>
 
                             <!-- Info Box -->
@@ -1347,14 +1340,6 @@
                         <div class="inner-card">
                             <div class="section-header">{{ t('frontend.instruction_optional_header') }}</div>
                             <div class="form-group"><label>{{ t('frontend.pdf_link_label') }}</label><input v-model="manualForm.pdfUrl"></div>
-                            <input type="file" id="manual-pdf-upload" accept=".pdf" style="display: none" @change="manualForm.hasFile = true">
-                            <button class="btn-primary" style="background: rgba(117,117,117,0.1); color: var(--ha-text-primary-color);" @click="document.getElementById('manual-pdf-upload').click()">
-                                <div style="display: flex; align-items: center; justify-content: center; gap: 8px;">
-                                    <span class="material-icons">attach_file</span>
-                                    {{ t('frontend.select_file_btn') }}
-                                    <span v-if="manualForm.hasFile" class="material-icons" style="color: var(--ha-success-color); font-size: 16px;">check_circle</span>
-                                </div>
-                            </button>
                         </div>
 
                         <button class="btn-primary" style="width: 100%; height: 56px; margin-top: 16px;" @click="saveManual" :disabled="!manualForm.name">
