@@ -216,6 +216,7 @@ const app = createApp({
                 const savedJobId = localStorage.getItem('instrumatic_active_job_id');
                 if (savedJobId) {
                     wizardState.value = 'processing';
+                    processingProgress.value = 0; // Reset progress when resuming job
                     processingMessage.value = t('frontend.ai_studying_msg');
                     pollJob(savedJobId);
                 }
@@ -248,13 +249,25 @@ const app = createApp({
 
         const refreshAiStatus = async () => {
             try {
-                const status = await Api.proxyRequest('GET', 'status');
+                if (!userKey.value) {
+                    console.warn('[AI Status] No userKey available');
+                    return;
+                }
+                console.log('[AI Status] Fetching status with userKey:', userKey.value);
+                const status = await Api.getStatus(userKey.value);
+                console.log('[AI Status] Response:', status);
                 if (status) {
                     data.value.remaining_attempts = status.remaining;
                     data.value.expiry_date = status.expires_at;
+                    console.log('[AI Status] Updated data:', data.value.remaining_attempts, data.value.expiry_date);
+                } else {
+                    console.warn('[AI Status] Empty response');
                 }
             } catch (e) {
-                console.warn("AI Status check failed:", e);
+                console.warn("[AI Status] Check failed:", e.message, e);
+                // Fallback for testing - remove after backend fix
+                // data.value.remaining_attempts = 5;
+                // data.value.expiry_date = '2026-12-31';
             }
         };
 
@@ -836,6 +849,8 @@ const app = createApp({
                 wizardData.value = { modelName: '', pdfUrl: '' };
                 manualForm.value = { name: '', brand: '', model: '', type: '', location: data.value.locations[0]?.name || '', installationDate: dayjs().format('YYYY-MM-DD'), pdfUrl: '' };
                 haSearchQuery.value = '';
+                processingProgress.value = 0; // Reset progress bar
+                processingMessage.value = '';
             }
             refreshAiStatus();
         };

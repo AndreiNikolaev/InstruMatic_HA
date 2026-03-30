@@ -57,7 +57,7 @@ export const Api = {
     },
 
     async loadTranslations(lang) {
-        const res = await fetch(`/instrumatic/translations/${lang}.json`);
+        const res = await fetch(`/instrumatic/static/translations/${lang}.json`);
         if (res.ok) return await res.json();
         return null;
     },
@@ -99,6 +99,49 @@ export const Api = {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ action, type, payload })
         });
+    },
+
+    async getStatus(userKey) {
+        console.log('[getStatus] Calling with userKey:', userKey);
+        
+        // Try via HA proxy first
+        try {
+            const res = await fetch('/api/instrumatic/proxy/status', {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-User-Key': userKey
+                }
+            });
+            console.log('[getStatus] Proxy response status:', res.status);
+            if (res.ok) {
+                const data = await res.json();
+                console.log('[getStatus] Proxy response data:', data);
+                return data;
+            }
+        } catch (e) {
+            console.warn('[getStatus] Proxy failed, trying direct:', e.message);
+        }
+        
+        // Fallback: direct request to backend
+        console.log('[getStatus] Trying direct backend request...');
+        const res = await fetch('https://api.instrumatic.ru/api/v1/status', {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-User-Key': userKey
+            },
+            mode: 'cors'
+        });
+        console.log('[getStatus] Direct response status:', res.status);
+        if (!res.ok) {
+            const errorText = await res.text();
+            console.error('[Status API] Direct error:', res.status, errorText);
+            throw new Error(`Status API error: ${res.status}`);
+        }
+        const data = await res.json();
+        console.log('[getStatus] Direct response data:', data);
+        return data;
     },
 
     async downloadFile(url) {

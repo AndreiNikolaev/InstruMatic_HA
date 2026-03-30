@@ -403,7 +403,7 @@ class InstruMaticProxyView(HomeAssistantView):
         """Forward request to backend."""
         method = request.method
         backend_path = f"/api/v1/{path}"
-        
+
         # Preserve query parameters from original request
         query_params = request.query_string
         if query_params:
@@ -414,14 +414,15 @@ class InstruMaticProxyView(HomeAssistantView):
         # Read raw body bytes first to ensure exact match with signature
         body_bytes = await request.read()
         body_str = body_bytes.decode('utf-8') if body_bytes else ""
-        
+
         _LOGGER.debug("Proxy POST body: %s", body_str[:200])
 
         timestamp = str(int(time.time()))
-        user_key = self._get_user_key()
+        # Use user_key from request header if provided, otherwise generate from HA
+        user_key = request.headers.get('X-User-Key') or self._get_user_key()
         signature = self._generate_signature(method, backend_path, timestamp, body_str)
-        
-        _LOGGER.debug("Proxy signature debug: method=%s path=%s body_length=%d", method, backend_path, len(body_str))
+
+        _LOGGER.debug("Proxy signature debug: method=%s path=%s body_length=%d user_key=%s", method, backend_path, len(body_str), user_key[:20] if user_key else 'None')
 
         headers = {
             "X-Signature": signature,

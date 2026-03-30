@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>InstruMatic - Обслуживание оборудования</title>
+    <title>InstruMatic</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://unpkg.com/dayjs@1.11.10/dayjs.min.js"></script>
     <script src="https://unpkg.com/dayjs@1.11.10/locale/ru.js"></script>
@@ -14,7 +14,7 @@
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&display=swap" rel="stylesheet">
     <script>
-        // Подключаем плагины для работы с датами
+        //Data plugins
         dayjs.extend(window.dayjs_plugin_customParseFormat);
         dayjs.extend(window.dayjs_plugin_relativeTime);
         dayjs.extend(window.dayjs_plugin_isBetween);
@@ -1238,13 +1238,13 @@
                     <div v-if="wizardTab === 'ai'">
                         <div v-if="wizardState === 'idle'">
                             <!-- Attempts Bar -->
-                            <div class="attempts-bar" v-if="data.remaining_attempts !== null">
+                            <div class="attempts-bar">
                                 <div class="attempts-label">
                                     <span class="material-icons" style="font-size: 18px;">auto_awesome</span>
-                                    {{ t('frontend.ai_limit_label')?.replace('%1$d', data.remaining_attempts) || 'Лимит ИИ: ' + data.remaining_attempts }}
+                                    <span>{{ t('frontend.ai_limit_label')?.replace('%1$d', data.remaining_attempts || 0) }}</span>
                                 </div>
                                 <div class="expiry-label" v-if="data.expiry_date">
-                                    {{ t('frontend.until_date_fmt')?.replace('%1$s', dayjs(data.expiry_date).format('D MMMM YYYY')) || 'до ' + dayjs(data.expiry_date).format('DD.MM.YYYY') }}
+                                    {{ t('frontend.until_date_fmt')?.replace('%s', dayjs(data.expiry_date).format('D MMMM YYYY')) }}
                                 </div>
                             </div>
 
