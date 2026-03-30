@@ -1,0 +1,1490 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>InstruMatic - Обслуживание оборудования</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://unpkg.com/dayjs@1.11.10/dayjs.min.js"></script>
+    <script src="https://unpkg.com/dayjs@1.11.10/locale/ru.js"></script>
+    <script src="https://unpkg.com/dayjs@1.11.10/plugin/customParseFormat.js"></script>
+    <script src="https://unpkg.com/dayjs@1.11.10/plugin/relativeTime.js"></script>
+    <script src="https://unpkg.com/dayjs@1.11.10/plugin/isBetween.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+    <script>
+        // Подключаем плагины для работы с датами
+        dayjs.extend(window.dayjs_plugin_customParseFormat);
+        dayjs.extend(window.dayjs_plugin_relativeTime);
+        dayjs.extend(window.dayjs_plugin_isBetween);
+    </script>
+    <style>
+        :root {
+            --ha-primary-color: #03a9f4;
+            --ha-card-background: #ffffff;
+            --ha-background-color: #f5f5f5;
+            --ha-text-primary-color: #212121;
+            --ha-text-secondary-color: #757575;
+            --ha-divider-color: #e0e0e0;
+            --ha-error-color: #db4437;
+            --ha-warning-color: #ffa600;
+            --ha-success-color: #43a047;
+            --ha-card-border-radius: 20px;
+            --ha-header-height: 56px;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --ha-card-background: #1c1c1c;
+                --ha-background-color: #101010;
+                --ha-text-primary-color: #e1e1e1;
+                --ha-text-secondary-color: #b0b0b0;
+                --ha-divider-color: #303030;
+            }
+        }
+
+        [v-cloak] { display: none; }
+
+        body {
+            margin: 0; padding: 0;
+            font-family: 'Roboto', sans-serif;
+            background-color: var(--ha-background-color);
+            color: var(--ha-text-primary-color);
+            -webkit-tap-highlight-color: transparent;
+            overflow: hidden; /* Prevents double scrollbars in HA */
+        }
+
+        #app {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            width: 100%;
+            overflow: hidden;
+            background-color: var(--ha-background-color);
+        }
+
+        /* Main App Header */
+        .app-header {
+            flex: 0 0 auto;
+            background: var(--ha-card-background);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            z-index: 100;
+        }
+        .header-top {
+            height: var(--ha-header-height);
+            display: flex; align-items: center; padding: 0 16px;
+            gap: 16px;
+        }
+        .header-title {
+            flex-grow: 1; font-size: 20px; font-weight: 500;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .header-actions { display: flex; align-items: center; gap: 8px; }
+        .header-actions .material-icons { color: var(--ha-text-secondary-color); cursor: pointer; padding: 8px; }
+
+        /* Navigation rows below header top */
+        .nav-bar-sticky {
+            background: var(--ha-card-background);
+            border-bottom: 1px solid var(--ha-divider-color);
+            display: flex; align-items: center;
+        }
+
+        .tab-row {
+            display: flex; overflow-x: auto; background: var(--ha-card-background);
+            scrollbar-width: none; flex-grow: 1;
+        }
+        .tab-row::-webkit-scrollbar { display: none; }
+        .tab {
+            padding: 12px 20px; cursor: pointer; white-space: nowrap;
+            color: var(--ha-text-secondary-color); font-weight: 500;
+            text-transform: uppercase; font-size: 14px; position: relative; transition: color 0.2s;
+        }
+        .tab.active { color: var(--ha-primary-color); }
+        .tab.active::after { content: ''; position: absolute; bottom: 0; left: 10%; right: 10%; height: 3px; background-color: var(--ha-primary-color); border-radius: 3px 3px 0 0; }
+
+        .detail-tabs {
+            display: flex; background: var(--ha-card-background);
+            border-bottom: 1px solid var(--ha-divider-color);
+            align-items: center;
+        }
+        .detail-tab {
+            flex: 1; padding: 12px; text-align: center; cursor: pointer;
+            color: var(--ha-text-secondary-color); font-weight: 500;
+            font-size: 13px; text-transform: uppercase; position: relative;
+        }
+        .detail-tab.active { color: var(--ha-primary-color); }
+        .detail-tab.active::after {
+            content: ''; position: absolute; bottom: 0; left: 20%; right: 20%;
+            height: 3px; background-color: var(--ha-primary-color); border-radius: 3px 3px 0 0;
+        }
+
+        .main-content {
+            flex: 1 1 auto;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            background-color: var(--ha-background-color);
+        }
+
+        .container { max-width: 800px; margin: 0 auto; padding: 16px; padding-bottom: 100px; }
+
+        .info-header { padding: 16px; background: var(--ha-card-background); }
+
+        .card {
+            background-color: var(--ha-card-background); border-radius: var(--ha-card-border-radius);
+            padding: 16px; margin-bottom: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border: none;
+            transition: transform 0.1s;
+        }
+        .card-clickable:active { transform: scale(0.98); }
+
+        .status-dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; margin-right: 8px; }
+        .status-red { background-color: var(--ha-error-color); }
+        .status-amber { background-color: var(--ha-warning-color); }
+        .status-green { background-color: var(--ha-success-color); }
+
+        .fab {
+            position: fixed; right: 24px; bottom: 24px; width: 56px; height: 56px; border-radius: 16px;
+            background-color: var(--ha-primary-color); color: white; display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3); cursor: pointer; z-index: 101;
+            transition: transform 0.1s;
+        }
+        .fab:active { transform: scale(0.9); }
+
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 16px;
+            opacity: 0;
+            animation: fadeIn 0.2s ease-out forwards;
+        }
+        .modal-overlay.v-leave-active {
+            animation: fadeOut 0.2s ease-in forwards;
+        }
+
+        .modal {
+            background: var(--ha-card-background); border-radius: 20px; width: 100%; max-width: 600px;
+            max-height: 90vh; overflow: hidden; display: flex; flex-direction: column;
+            box-shadow: 0 24px 38px rgba(0,0,0,0.2);
+            opacity: 0;
+            transform: scale(0.95) translateY(-20px);
+            animation: slideIn 0.3s ease-out forwards;
+        }
+        .modal-overlay.v-leave-active .modal {
+            animation: slideOut 0.2s ease-in forwards;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @keyframes fadeOut {
+            from { opacity: 1; }
+            to { opacity: 0; }
+        }
+        @keyframes slideIn {
+            from { opacity: 0; transform: scale(0.95) translateY(-20px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        @keyframes slideOut {
+            from { opacity: 1; transform: scale(1) translateY(0); }
+            to { opacity: 0; transform: scale(0.95) translateY(-20px); }
+        }
+        .modal-header { padding: 16px 24px; border-bottom: 1px solid var(--ha-divider-color); display: flex; align-items: center; flex-shrink: 0; }
+        .modal-header h2 { margin: 0; font-size: 18px; font-weight: 500; flex-grow: 1; }
+        .modal-content { padding: 16px; overflow-y: auto; flex-grow: 1; background-color: var(--ha-background-color); padding-bottom: 32px; }
+
+        .form-group { margin-bottom: 16px; }
+        .form-group label { display: block; font-size: 11px; margin-bottom: 4px; color: var(--ha-text-secondary-color); text-transform: uppercase; font-weight: bold; }
+
+        input, select, textarea {
+            width: 100%; padding: 10px 12px; border: 1px solid var(--ha-divider-color); border-radius: 12px;
+            background: var(--ha-card-background); color: var(--ha-text-primary-color); font-size: 16px; outline: none; box-sizing: border-box;
+        }
+        input:focus { border-color: var(--ha-primary-color); }
+
+        .btn-row { display: flex; gap: 8px; justify-content: flex-end; padding: 12px 16px; border-top: 1px solid var(--ha-divider-color); background: var(--ha-card-background); flex-shrink: 0; }
+        button {
+            padding: 10px 20px; border-radius: 12px; border: none; font-weight: bold; cursor: pointer;
+            text-transform: none; background: transparent; color: var(--ha-primary-color); font-size: 14px;
+        }
+        .btn-primary { background: var(--ha-primary-color); color: white; }
+        .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-danger { color: var(--ha-error-color); }
+
+        .item-row { display: flex; gap: 12px; }
+        .item-row > * { flex: 1; }
+
+        /* Wizard Specific */
+        .attempts-bar {
+            background: rgba(3, 169, 244, 0.1); border-radius: 12px; padding: 8px 12px;
+            display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;
+        }
+        .attempts-label { font-size: 14px; font-weight: bold; color: var(--ha-primary-color); display: flex; align-items: center; gap: 4px; }
+        .expiry-label { font-size: 12px; color: var(--ha-text-secondary-color); }
+
+        .inner-card {
+            background: var(--ha-card-background); border-radius: 20px; padding: 16px; margin-bottom: 16px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .section-header { font-size: 11px; color: var(--ha-text-secondary-color); text-transform: uppercase; margin-bottom: 12px; font-weight: bold; }
+
+        .info-box {
+            background: rgba(117, 117, 117, 0.1); border-radius: 12px; padding: 12px; margin-top: 12px;
+        }
+        .info-box .info-item { display: flex; gap: 12px; font-size: 12px; margin-bottom: 8px; line-height: 1.4; }
+        .info-item:last-child { margin-bottom: 0; }
+        .info-item .material-icons { font-size: 18px; }
+
+        .or-divider { display: flex; align-items: center; margin: 16px 0; color: var(--ha-text-secondary-color); font-size: 12px; text-transform: uppercase; }
+        .or-divider::before, .or-divider::after { content: ""; flex: 1; height: 1px; background: var(--ha-divider-color); }
+        .or-divider span { padding: 0 16px; }
+
+        .ha-device-card {
+            display: flex; align-items: center; gap: 16px; padding: 16px; background: var(--ha-card-background);
+            border-radius: 16px; margin-bottom: 8px; cursor: pointer; transition: background 0.2s;
+        }
+        .ha-device-card:active { background: rgba(0,0,0,0.05); }
+        .ha-icon-box {
+            width: 40px; height: 40px; border-radius: 50%; background: rgba(3, 169, 244, 0.1);
+            display: flex; align-items: center; justify-content: center; color: var(--ha-primary-color);
+        }
+
+        /* Task Design (Android Match) */
+        .task-card-main { display: flex; gap: 12px; align-items: flex-start; }
+        .task-status-icon-box {
+            min-width: 40px; height: 40px; border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .task-info-side { flex-grow: 1; cursor: pointer; }
+        .task-actions-side { display: flex; gap: 4px; }
+
+        .task-name { font-weight: bold; font-size: 16px; color: var(--ha-text-primary-color); }
+        .task-period { font-size: 12px; color: var(--ha-text-secondary-color); margin-top: 2px; }
+
+        .action-icon { font-size: 20px; color: var(--ha-text-secondary-color); cursor: pointer; padding: 6px; border-radius: 50%; }
+        .action-icon.danger { color: var(--ha-error-color); opacity: 0.7; }
+
+        .instructions-box { margin-top: 12px; padding: 12px; background: rgba(0,0,0,0.03); border-radius: 12px; border: 1px solid var(--ha-divider-color); }
+        .instruction-item { display: flex; gap: 8px; font-size: 13px; margin-bottom: 4px; color: var(--ha-text-secondary-color); }
+        .instruction-dot { color: var(--ha-primary-color); font-weight: bold; }
+
+        .task-footer {
+            display: flex; justify-content: space-between; align-items: flex-end;
+            margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(0,0,0,0.05);
+        }
+        .next-date-label { font-size: 11px; color: var(--ha-text-secondary-color); text-transform: uppercase; }
+        .next-date-value { font-size: 14px; font-weight: bold; }
+        .Labor-date-value { font-size: 12px; color: var(--ha-text-secondary-color); }
+
+        .btn-complete { background: var(--ha-success-color) !important; color: white !important; }
+
+        /* Smooth Expands */
+        .expand-enter-active, .expand-leave-active { transition: all 0.3s ease-in-out; overflow: hidden; max-height: 500px; }
+        .expand-enter-from, .expand-leave-to { max-height: 0; opacity: 0; margin-top: 0; padding-top: 0; padding-bottom: 0; }
+
+        /* Rules UI */
+        .rules-section { margin-top: 12px; border-radius: 12px; background: rgba(255, 166, 0, 0.05); }
+        .rules-header { display: flex; align-items: center; gap: 8px; color: var(--ha-warning-color); font-size: 14px; cursor: pointer; padding: 12px; font-weight: bold; }
+        .rules-content { padding: 0 12px 12px 36px; font-size: 13px; }
+        .rule-item { margin-bottom: 4px; position: relative; }
+        .rule-item::before { content: '•'; position: absolute; left: -16px; font-weight: bold; }
+
+        /* Equipment Card Styles */
+        .eq-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        .eq-card-location { display: flex; align-items: center; font-size: 12px; color: var(--ha-text-secondary-color); }
+        .eq-card-actions { display: flex; gap: 4px; }
+        .eq-card-actions .material-icons { font-size: 20px; color: var(--ha-text-secondary-color); padding: 4px; cursor: pointer; }
+        .eq-card-title-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+        .eq-card-name { font-size: 20px; font-weight: bold; flex-grow: 1; }
+        .eq-card-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 16px; padding-top: 12px; border-top: 1px solid rgba(0,0,0,0.05); }
+
+        .total-cost-card { background: rgba(3, 169, 244, 0.05); border: 1px solid rgba(3, 169, 244, 0.1); }
+        .cost-label { font-size: 11px; color: var(--ha-primary-color); text-transform: uppercase; }
+        .cost-value { font-size: 24px; font-weight: 900; color: var(--ha-text-primary-color); }
+
+        /* Materials */
+        .material-icon-box { min-width: 40px; height: 40px; border-radius: 12px; background: rgba(117, 117, 117, 0.1); display: flex; align-items: center; justify-content: center; }
+        .material-icon { color: var(--ha-text-secondary-color); font-size: 20px; }
+
+        /* Selection/Usage UI */
+        .used-material-row {
+            display: flex; align-items: center; gap: 8px; padding: 4px 8px;
+            background: rgba(3, 169, 244, 0.05); border-radius: 8px; margin-bottom: 4px;
+        }
+        .used-material-name { flex-grow: 1; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .used-material-cost { width: 80px; text-align: right; }
+        .grand-total-row {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--ha-divider-color);
+        }
+        .grand-total-label { font-weight: bold; font-size: 16px; }
+        .grand-total-value { font-weight: bold; font-size: 18px; color: var(--ha-success-color); }
+
+        .badge { background: rgba(3, 169, 244, 0.1); color: var(--ha-primary-color); padding: 4px 12px; border-radius: 8px; font-size: 12px; font-weight: bold; }
+        .chip { background: var(--ha-divider-color); padding: 4px 12px; border-radius: 166px; font-size: 12px; border: none; }
+
+        .upcoming-badge {
+            background: var(--ha-error-color); color: white; border-radius: 10px;
+            padding: 2px 6px; font-size: 10px; font-weight: bold;
+            position: absolute; top: 4px; right: 4px; min-width: 14px; text-align: center;
+        }
+
+        /* AI Processing Animations */
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @keyframes pulse-scale { 0% { transform: scale(0.8); } 100% { transform: scale(1.1); } }
+        @keyframes bounce-y { 0% { transform: translateY(0); } 100% { transform: translateY(6px); } }
+        @keyframes bounce-x { 0% { transform: translateX(0); } 100% { transform: translateX(8px); } }
+
+        .anim-spin { animation: spin 2s linear infinite; }
+        .anim-pulse { animation: pulse-scale 1s ease-in-out infinite alternate; }
+        .anim-bounce-y { animation: bounce-y 1s ease-in-out infinite alternate; }
+        .anim-bounce-x { animation: bounce-x 1s ease-in-out infinite alternate; }
+
+        .processing-icon-container {
+            width: 64px; height: 64px; margin: 0 auto 16px;
+            display: flex; align-items: center; justify-content: center;
+            background: rgba(3, 169, 244, 0.1); border-radius: 50%;
+        }
+        .processing-icon-container .material-icons { font-size: 32px; color: var(--ha-primary-color); }
+
+        /* Report Table */
+        .report-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .report-table th { text-align: left; padding: 12px 8px; border-bottom: 1px solid var(--ha-divider-color); color: var(--ha-text-secondary-color); font-weight: bold; text-transform: uppercase; font-size: 11px; }
+        .report-table td { padding: 12px 8px; border-bottom: 1px solid var(--ha-divider-color); }
+        .report-total-row { margin-top: 20px; padding: 16px; background: rgba(3, 169, 244, 0.05); border-radius: 12px; display: flex; justify-content: space-between; align-items: center; }
+
+        /* App Info Styles */
+        .app-info-content { text-align: center; padding: 24px 16px; }
+        .app-logo-box { width: 80px; height: 80px; border-radius: 20px; background: var(--ha-card-background); display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .app-logo-box img { width: 64px; height: 64px; object-fit: contain; }
+        .app-name { font-size: 24px; font-weight: 900; color: var(--ha-primary-color); margin-bottom: 4px; }
+        .app-version { font-size: 14px; color: var(--ha-text-secondary-color); margin-bottom: 24px; }
+        .balance-card { background: rgba(3, 169, 244, 0.05); border-radius: 16px; padding: 16px; margin-bottom: 24px; }
+        .balance-label { font-size: 12px; color: var(--ha-text-secondary-color); text-transform: uppercase; margin-bottom: 4px; }
+        .balance-value { font-size: 18px; font-weight: bold; }
+        .balance-expiry { font-size: 12px; color: var(--ha-text-secondary-color); margin-top: 4px; }
+        .info-card { background: var(--ha-card-background); border-radius: 16px; padding: 16px; margin-bottom: 16px; text-align: left; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .info-card-header { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; color: var(--ha-primary-color); font-weight: bold; }
+        .transfer-code-box { background: var(--ha-background-color); border: 1px dashed var(--ha-divider-color); border-radius: 12px; padding: 16px; margin-top: 16px; display: flex; align-items: center; justify-content: center; position: relative; }
+        .transfer-code { font-size: 32px; font-weight: 900; letter-spacing: 4px; color: var(--ha-primary-color); }
+        .copy-code-btn { position: absolute; right: 8px; color: var(--ha-text-secondary-color); cursor: pointer; }
+
+        /* Purchase Modal Styles */
+        .package-card {
+            background: var(--ha-card-background);
+            border-radius: 20px;
+            padding: 20px;
+            border: 1px solid var(--ha-divider-color);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .package-card:active { transform: scale(0.98); }
+        .package-card.package-hit {
+            border: 2px solid var(--ha-primary-color);
+            background: rgba(3, 169, 244, 0.05);
+        }
+        .package-card.package-disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            background: var(--ha-background-color);
+        }
+        .package-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 16px;
+        }
+        .package-info { flex-grow: 1; padding-right: 16px; }
+        .package-hit-badge {
+            background: var(--ha-primary-color);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 8px;
+            font-size: 10px;
+            font-weight: bold;
+            text-transform: uppercase;
+            display: inline-block;
+            margin-bottom: 4px;
+        }
+        .package-name { font-size: 18px; font-weight: bold; color: var(--ha-text-primary-color); margin-bottom: 4px; }
+        .package-description { font-size: 13px; color: var(--ha-text-secondary-color); }
+        .package-price {
+            font-size: 22px;
+            font-weight: 900;
+            color: var(--ha-text-primary-color);
+            white-space: nowrap;
+        }
+        .package-card-disabled .package-price { color: var(--ha-text-secondary-color); }
+        .package-card-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 12px;
+            border-top: 1px solid var(--ha-divider-color);
+        }
+
+        /* Welcome Screen Styles */
+        .welcome-screen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100%;
+            padding: 24px;
+            text-align: center;
+        }
+        .welcome-logo-box {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background: rgba(3, 169, 244, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 16px;
+        }
+        .welcome-logo {
+            font-size: 64px;
+            color: var(--ha-primary-color);
+        }
+        .welcome-title {
+            font-size: 24px;
+            font-weight: 900;
+            color: var(--ha-text-primary-color);
+            margin-bottom: 8px;
+            line-height: 32px;
+        }
+        .welcome-subtitle {
+            font-size: 16px;
+            color: var(--ha-text-secondary-color);
+            margin-bottom: 24px;
+            line-height: 24px;
+            white-space: pre-line;
+        }
+        .welcome-how-it-works {
+            background: rgba(3, 169, 244, 0.05);
+            border-radius: 20px;
+            padding: 16px;
+            margin-bottom: 24px;
+            max-width: 400px;
+            text-align: left;
+        }
+        .welcome-how-it-works-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+        .welcome-how-it-works-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--ha-text-primary-color);
+        }
+        .welcome-how-it-works-desc {
+            font-size: 14px;
+            color: var(--ha-text-secondary-color);
+            line-height: 20px;
+        }
+        .welcome-ai-warning {
+            background: rgba(219, 68, 55, 0.1);
+            border-radius: 10px;
+            padding: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 12px;
+        }
+        .welcome-ai-warning-icon {
+            font-size: 16px;
+            color: var(--ha-error-color);
+        }
+        .welcome-ai-warning-text {
+            font-size: 12px;
+            color: var(--ha-text-secondary-color);
+        }
+        .welcome-add-equipment-btn {
+            background: var(--ha-primary-color);
+            color: white;
+            border: none;
+            border-radius: 14px;
+            padding: 16px 32px;
+            font-size: 18px;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: transform 0.1s;
+        }
+        .welcome-add-equipment-btn:active {
+            transform: scale(0.98);
+        }
+    </style>
+</head>
+<body>
+    <div id="app" v-cloak v-if="isLoaded">
+        <!-- Persistent Header -->
+        <div class="app-header">
+            <div class="header-top">
+                <span v-if="currentEquipmentId || showUpcomingTasks || showAppInfo" class="material-icons" style="cursor: pointer; color: var(--ha-text-secondary-color)" @click="goBack">arrow_back</span>
+                <div class="header-title">{{ headerTitle }}</div>
+                <div class="header-actions">
+                    <span class="material-icons" @click="openReportDialog">assessment</span>
+                    <div v-if="!currentEquipmentId && !showUpcomingTasks && !showAppInfo" style="position: relative; display: flex;" @click="showUpcomingTasks = true">
+                        <span class="material-icons">calendar_today</span>
+                        <div v-if="upcomingTasks.length" class="upcoming-badge" style="top: 2px; right: 2px;">{{ upcomingTasks.length }}</div>
+                    </div>
+                    <span v-if="!currentEquipmentId && !showUpcomingTasks && !showAppInfo" class="material-icons" @click="showAppInfo = true">info</span>
+                    <span v-if="currentEquipmentId && !showUpcomingTasks && !showAppInfo" class="material-icons" @click="editEquipment(currentItem)">edit</span>
+                </div>
+            </div>
+
+            <!-- Tabs for main screen -->
+            <div v-if="!currentEquipmentId && !showUpcomingTasks && !showAppInfo" class="nav-bar-sticky">
+                <div class="tab-row">
+                    <div class="tab" :class="{active: selectedLocation === t('frontend.all_locations')}" @click="selectedLocation = t('frontend.all_locations')">
+                        {{ t('frontend.all') }}
+                    </div>
+                    <div v-for="loc in data.locations" :key="loc.id" class="tab" :class="{active: selectedLocation === loc.name}" @click="selectedLocation = loc.name">
+                        {{ loc.name }}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tabs for details view -->
+            <div v-if="currentEquipmentId && !showUpcomingTasks && !showAppInfo" class="detail-tabs">
+                <div style="flex-grow: 1; display: flex;">
+                    <div class="detail-tab" :class="{active: detailTab === 'tasks'}" @click="detailTab = 'tasks'">{{ t('frontend.schedule') }}</div>
+                    <div class="detail-tab" :class="{active: detailTab === 'history'}" @click="detailTab = 'history'">{{ t('frontend.history') }}</div>
+                    <div class="detail-tab" :class="{active: detailTab === 'materials'}" @click="detailTab = 'materials'">{{ t('frontend.materials') }}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <!-- Welcome Screen (when no equipment) -->
+            <div v-if="!currentEquipmentId && !showUpcomingTasks && !showAppInfo && data.equipment.length === 0" class="welcome-screen">
+                <div class="welcome-logo-box">
+                    <span class="material-icons welcome-logo">settings_suggest</span>
+                </div>
+                
+                <div class="welcome-title">{{ t('welcome.title') }}</div>
+                <div class="welcome-subtitle">{{ t('welcome.subtitle') }}</div>
+                
+                <div class="welcome-how-it-works">
+                    <div class="welcome-how-it-works-header">
+                        <span class="material-icons" style="color: var(--ha-primary-color); font-size: 24px;">auto_awesome</span>
+                        <div class="welcome-how-it-works-title">{{ t('welcome.how_it_works') }}</div>
+                    </div>
+                    <div class="welcome-how-it-works-desc">{{ t('welcome.how_it_works_desc') }}</div>
+                    
+                    <div class="welcome-ai-warning">
+                        <span class="material-icons welcome-ai-warning-icon">warning</span>
+                        <div class="welcome-ai-warning-text">{{ t('welcome.ai_warning') }}</div>
+                    </div>
+                </div>
+                
+                <button class="welcome-add-equipment-btn" @click="openWizard">
+                    <span class="material-icons">add</span>
+                    {{ t('welcome.add_equipment') }}
+                </button>
+            </div>
+
+            <!-- Main List View -->
+            <div v-else-if="!currentEquipmentId && !showUpcomingTasks && !showAppInfo">
+                <div class="container">
+                    <div v-for="item in equipmentWithDates" :key="item.id" class="card card-clickable" @click="openDetails(item.id)">
+                        <div class="eq-card-header">
+                            <div class="eq-card-location">
+                                <span class="status-dot" :class="getStatusClass(item)"></span>
+                                {{ item.location }}
+                            </div>
+                            <div class="eq-card-actions">
+                                <span class="material-icons" @click.stop="copyEquipment(item)">content_copy</span>
+                                <span class="material-icons" @click.stop="editEquipment(item)">edit</span>
+                                <span class="material-icons" @click.stop="deleteEquipmentDirect(item)">delete</span>
+                            </div>
+                        </div>
+
+                        <div class="eq-card-title-row">
+                            <div class="eq-card-name">{{ item.name }}</div>
+                            <div v-if="item.brand" class="badge">{{ item.brand }}</div>
+                        </div>
+
+                        <div style="font-size: 13px; color: var(--ha-text-secondary-color); margin-bottom: 2px;">
+                            {{ item.type }}<span v-if="item.model"> • {{ item.model }}</span>
+                        </div>
+
+                        <div class="eq-card-footer">
+                            <div>
+                                <div style="font-size: 11px; color: var(--ha-text-secondary-color); text-transform: uppercase;">{{ t('frontend.next_service') }}</div>
+                                <div style="font-size: 16px; font-weight: 600;" :style="{color: getStatusColor(item)}">
+                                    {{ item.nextServiceDate ? dayjs(item.nextServiceDate).format('D MMMM YYYY') : t('frontend.no_data') }}
+                                </div>
+                                <div v-if="item.nextServiceTask" style="font-size: 12px; color: var(--ha-text-secondary-color);">{{ item.nextServiceTask }}</div>
+                            </div>
+                            <span class="material-icons" style="color: var(--ha-divider-color)">chevron_right</span>
+                        </div>
+                    </div>
+
+                    <div v-if="!filteredEquipment.length" style="text-align: center; margin-top: 50px; color: var(--ha-text-secondary-color)">
+                        {{ t('frontend.no_equipment_in_location') }}
+                    </div>
+                </div>
+                <div class="fab" @click="openWizard">
+                    <span class="material-icons">add</span>
+                </div>
+            </div>
+
+            <!-- Upcoming Tasks Journal View -->
+            <div v-else-if="showUpcomingTasks">
+                <div class="container">
+                    <div v-for="item in upcomingTasks" :key="item.id" class="card">
+                        <div class="task-card-main">
+                            <div class="task-status-icon-box" :style="{background: item.statusColor + '1a'}">
+                                <span class="material-icons" :style="{color: item.statusColor}">
+                                    {{ item.isOverdue ? 'priority_high' : item.isOneTime ? 'flag' : 'calendar_today' }}
+                                </span>
+                            </div>
+                            <div class="task-info-side" @click="openDetails(item.equipmentId); showUpcomingTasks = false;">
+                                <div class="task-name">{{ item.taskName }}</div>
+                                <div style="font-size: 13px; color: var(--ha-text-secondary-color)">{{ item.equipmentName }}</div>
+                                <div v-if="item.lastDate" style="font-size: 11px; color: var(--ha-text-secondary-color)">
+                                    {{ t('frontend.last_performed_fmt')?.replace('%s', dayjs(item.lastDate, ['YYYY-MM-DD', 'DD.MM.YYYY']).format('DD.MM.YYYY')) }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="task-footer">
+                            <div class="next-date-info">
+                                <div class="next-date-label">{{ t('frontend.next_service') }}</div>
+                                <div class="next-date-value" :style="{color: item.statusColor}">
+                                    {{ item.isOverdue ? t('frontend.overdue_prefix') : t('frontend.in_prefix') }}{{ item.timeText }}
+                                </div>
+                            </div>
+                            <button class="btn-primary btn-complete" style="border-radius: 12px; padding: 10px 20px; font-weight: bold; text-transform: none;" @click.stop="openCompleteTask(item.task)">
+                                <div style="display: flex; align-items: center; gap: 4px;">
+                                    <span class="material-icons" style="font-size: 18px;">check</span>
+                                    {{ t('frontend.complete_btn') }}
+                                </div>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div v-if="!upcomingTasks.length" style="text-align: center; color: var(--ha-text-secondary-color); margin-top: 50px;">
+                        <span class="material-icons" style="font-size: 48px; opacity: 0.3;">event_available</span>
+                        <p>{{ t('frontend.no_upcoming_tasks') }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- App Info View -->
+            <div v-else-if="showAppInfo">
+                <div class="container">
+                    <div class="app-info-content">
+                        <div class="app-logo-box">
+                            <img src="/instrumatic/static/img/logo.webp" alt="InstruMatic Logo">
+                        </div>
+                        <div class="app-name">InstruMatic</div>
+                        <div class="app-version">{{ t('frontend.app_version_fmt')?.replace('%s', data.version || '1.0.0') || 'версия 1.0.0' }}</div>
+
+                        <p style="color: var(--ha-text-secondary-color); margin-bottom: 32px;">
+                            {{ t('frontend.app_description') }}
+                        </p>
+
+                        <div class="balance-card">
+                            <div class="balance-label">{{ t('frontend.your_balance_label') }}</div>
+                            <div class="balance-value">
+                                {{ data.remaining_attempts }} {{ getRequestsLabel(data.remaining_attempts) }}
+                            </div>
+                            <div class="balance-expiry" v-if="data.expiry_date">
+                                {{ t('frontend.expiry_active_until')?.replace('%s', dayjs(data.expiry_date).format('DD.MM.YYYY')) }}
+                            </div>
+                            <button class="btn-primary" style="width: 100%; margin-top: 16px; display: flex; align-items: center; justify-content: center; gap: 8px;" @click="showPurchaseModal = true">
+                                <span class="material-icons">shopping_cart</span>
+                                {{ t('frontend.purchase_attempts_btn') || 'Купить попытки' }}
+                            </button>
+                        </div>
+
+                        <div class="info-card">
+                            <div class="info-card-header">
+                                <span class="material-icons">swap_horiz</span>
+                                <span>{{ t('frontend.transfer_attempts_title') }}</span>
+                            </div>
+                            <div style="font-size: 13px; color: var(--ha-text-secondary-color);">
+                                {{ t('frontend.transfer_attempts_desc') }}
+                            </div>
+
+                            <div v-if="transferCode" class="transfer-code-box">
+                                <div class="transfer-code">{{ transferCode }}</div>
+                                <span class="material-icons copy-code-btn" @click="copyToClipboard(transferCode)">content_copy</span>
+                            </div>
+
+                            <div style="display: flex; gap: 8px; margin-top: 16px;">
+                                <button class="btn-primary" style="flex: 1;" @click="generateTransferCode" :disabled="isGeneratingCode">
+                                    {{ isGeneratingCode ? '...' : t('frontend.get_code_action') }}
+                                </button>
+                                <button class="btn-primary" style="flex: 1; background: transparent; color: var(--ha-primary-color); border: 1px solid var(--ha-primary-color);" @click="showEnterCodeModal = true">
+                                    {{ t('frontend.enter_code_action') }}
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="info-card">
+                            <div class="info-card-header">
+                                <span class="material-icons">support_agent</span>
+                                <span>{{ t('frontend.feedback_support_label') }}</span>
+                            </div>
+                            <div style="display: flex; flex-direction: column; gap: 8px;">
+                                <a :href="`mailto:support@instrumatic.ru?subject=Feedback InstruMatic (ID: ${userKey})`" 
+                                   style="font-size: 14px; font-weight: bold; color: var(--ha-primary-color); text-decoration: none; display: flex; align-items: center; gap: 8px;">
+                                    <span class="material-icons" style="font-size: 18px;">email</span>
+                                    support@instrumatic.ru
+                                </a>
+                                <a href="https://www.instrumatic.ru" target="_blank" 
+                                   style="font-size: 14px; font-weight: bold; color: var(--ha-primary-color); text-decoration: none; display: flex; align-items: center; gap: 8px;">
+                                    <span class="material-icons" style="font-size: 18px;">language</span>
+                                    www.instrumatic.ru
+                                </a>
+                            </div>
+                        </div>
+
+                        <div class="info-card" style="background: rgba(117,117,117,0.05);">
+                            <div style="font-size: 11px; color: var(--ha-text-secondary-color); text-transform: uppercase;">{{ t('frontend.unique_id_label') }}</div>
+                            <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 4px;">
+                                <div style="font-family: monospace; font-size: 14px;">{{ userKey }}</div>
+                                <span class="material-icons" style="font-size: 18px; color: var(--ha-text-secondary-color); cursor: pointer;" @click="copyToClipboard(userKey)">content_copy</span>
+                            </div>
+                        </div>
+
+                        <div style="margin-top: 32px; font-size: 12px; color: var(--ha-divider-color);">
+                            {{ t('frontend.developed_with_heart') }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Details View -->
+            <div v-else>
+                <div class="info-header" v-if="currentItem.importantRules && currentItem.importantRules.length">
+                    <div class="rules-section">
+                        <div class="rules-header" @click="showRules = !showRules">
+                            <span class="material-icons">warning_amber</span>
+                            <span style="flex-grow: 1;">{{ t('frontend.important_rules') || 'Важные правила' }}</span>
+                            <span class="material-icons">{{ showRules ? 'expand_less' : 'expand_more' }}</span>
+                        </div>
+                        <transition name="expand">
+                            <div v-if="showRules" class="rules-content">
+                                <div v-for="(rule, idx) in currentItem.importantRules" :key="idx" class="rule-item">
+                                    {{ rule }}
+                                </div>
+                            </div>
+                        </transition>
+                    </div>
+                </div>
+
+                <div class="container" style="padding-top: 0;">
+                    <div v-if="detailTab === 'tasks'">
+                        <div v-for="task in currentTasks" :key="task.id" class="card">
+                            <div class="task-card-main">
+                                <div class="task-status-icon-box" :style="{background: task.status === 'red' ? 'rgba(219,68,55,0.1)' : task.status === 'amber' ? 'rgba(255,166,0,0.1)' : 'rgba(67,160,71,0.1)'}">
+                                    <span class="material-icons" :style="{color: task.status === 'red' ? 'var(--ha-error-color)' : task.status === 'amber' ? 'var(--ha-warning-color)' : 'var(--ha-success-color)'}">
+                                        {{ task.daysRemaining < 0 ? 'priority_high' : task.isOneTime ? 'flag' : 'calendar_today' }}
+                                    </span>
+                                </div>
+                                <div class="task-info-side" @click="toggleTask(task.id)">
+                                    <div class="task-name">
+                                        {{ task.taskName }}
+                                        <span v-if="task.isOneTime" class="badge" style="background: var(--ha-warning-color); color: white; font-size: 10px; padding: 2px 6px; border-radius: 6px; margin-left: 8px;">{{ t('frontend.one_time_task') || 'Разовая' }}</span>
+                                    </div>
+                                    <div class="task-period">{{ task.periodicity }}</div>
+                                </div>
+                                <div class="task-actions-side">
+                                    <span class="material-icons action-icon" @click.stop="openTaskEdit(task)">edit</span>
+                                    <span class="material-icons action-icon danger" @click.stop="deleteTaskDirect(task)">delete</span>
+                                </div>
+                            </div>
+
+                            <transition name="expand">
+                                <div v-if="expandedTasks.has(task.id)" class="instructions-box">
+                                    <div v-if="task.instructions && task.instructions.length">
+                                        <div v-for="(instr, idx) in task.instructions" :key="idx" class="instruction-item">
+                                            <span class="instruction-dot">•</span> {{ instr }}
+                                        </div>
+                                    </div>
+                                    <div v-if="task.requiredComponents && task.requiredComponents.length" style="margin-top: 8px; border-top: 1px solid var(--ha-divider-color); padding-top: 8px;">
+                                        <div style="font-size: 11px; color: var(--ha-text-secondary-color); text-transform: uppercase; margin-bottom: 4px;">{{ t('frontend.required_materials') || 'Необходимые материалы' }}</div>
+                                        <div style="font-size: 13px; color: var(--ha-text-primary-color)">{{ task.requiredComponents.join(', ') }}</div>
+                                    </div>
+                                    <div v-if="(!task.instructions || !task.instructions.length) && (!task.requiredComponents || !task.requiredComponents.length)" style="color: var(--ha-text-secondary-color); font-style: italic; font-size: 12px; text-align: center;">
+                                        {{ t('frontend.no_instructions') }}
+                                    </div>
+                                </div>
+                            </transition>
+
+                            <div class="task-footer">
+                                <div class="next-date-info">
+                                    <div class="next-date-label">{{ t('frontend.next_service') }}</div>
+                                    <div class="next-date-value" :style="{color: task.status === 'red' ? 'var(--ha-error-color)' : task.status === 'amber' ? 'var(--ha-warning-color)' : 'var(--ha-success-color)'}">
+                                        {{ task.nextDate === '2099-12-31' ? t('frontend.completed_status') : dayjs(task.nextDate).format('D MMMM YYYY') }}
+                                    </div>
+                                    <div v-if="task.lastCompletedDate" class="last-date-value">
+                                        {{ t('frontend.last_performed_fmt')?.replace('%s', dayjs(task.lastCompletedDate, ['YYYY-MM-DD', 'DD.MM.YYYY']).format('DD.MM.YYYY')) || 'Выполнено: ' + dayjs(task.lastCompletedDate).format('DD.MM.YYYY') }}
+                                    </div>
+                                </div>
+                                <button class="btn-primary btn-complete" style="border-radius: 12px; padding: 10px 20px; font-weight: bold; text-transform: none;" @click.stop="openCompleteTask(task)">
+                                    <div style="display: flex; align-items: center; gap: 4px;">
+                                        <span class="material-icons" style="font-size: 18px;">check</span>
+                                        {{ t('frontend.complete_btn') }}
+                                    </div>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div v-if="!currentTasks.length" style="text-align: center; color: var(--ha-text-secondary-color); margin-top: 40px;">
+                            <span class="material-icons" style="font-size: 48px; opacity: 0.3;">event_busy</span>
+                            <p>{{ t('frontend.tasks_empty') }}</p>
+                        </div>
+                    </div>
+
+                    <div v-if="detailTab === 'history'">
+                        <div v-if="currentHistory.length" class="card total-cost-card">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <div>
+                                    <div class="cost-label">{{ t('frontend.total_costs') || 'Итого затрат' }}</div>
+                                    <div class="cost-value">{{ currentHistory.reduce((acc, h) => acc + (h.cost || 0) + (h.materialCost || 0), 0).toLocaleString() }} {{ t('frontend.currency_symbol') }}</div>
+                                </div>
+                                <span class="material-icons" style="font-size: 32px; color: var(--ha-primary-color); opacity: 0.5;">payments</span>
+                            </div>
+                        </div>
+
+                        <div v-for="hist in currentHistory" :key="hist.id" class="card card-clickable" @click="openHistoryEdit(hist)">
+                            <div style="display: flex; gap: 12px;">
+                                <div class="task-status-icon-box" style="background: rgba(67,160,71,0.1);">
+                                    <span class="material-icons" style="color: var(--ha-success-color);">check_circle</span>
+                                </div>
+                                <div style="flex-grow: 1;">
+                                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                                        <div style="font-weight: bold; font-size: 16px;">{{ hist.taskName }}</div>
+                                        <div style="display: flex; gap: 4px;">
+                                            <span class="material-icons" style="font-size: 18px; color: var(--ha-text-secondary-color);">edit</span>
+                                            <span class="material-icons" style="font-size: 18px; color: var(--ha-error-color); opacity: 0.7;" @click.stop="deleteHistoryEntryDirect(hist)">delete</span>
+                                        </div>
+                                    </div>
+                                    <div style="font-size: 12px; color: var(--ha-text-secondary-color)">
+                                        {{ t('frontend.performed_label') || 'Выполнено' }}: {{ dayjs(hist.completionDate, ['YYYY-MM-DD', 'DD.MM.YYYY']).format('DD.MM.YYYY') }}
+                                    </div>
+                                    <div v-if="hist.comment" style="margin-top: 8px; font-size: 14px; font-style: italic; color: var(--ha-text-secondary-color)">"{{ hist.comment }}"</div>
+                                    <div style="margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap;">
+                                        <div v-if="hist.cost || hist.materialCost" style="font-size: 13px; font-weight: 500; color: var(--ha-success-color);">
+                                            {{ ((hist.cost || 0) + (hist.materialCost || 0)).toLocaleString() }} {{ t('frontend.currency_symbol') }}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div v-if="!currentHistory.length" style="text-align: center; color: var(--ha-text-secondary-color); margin-top: 20px;">{{ t('frontend.history_empty') }}</div>
+                    </div>
+
+                    <div v-if="detailTab === 'materials'">
+                        <div v-for="comp in currentComponents" :key="comp.id" class="card card-clickable" @click="openMaterialEdit(comp)">
+                            <div style="display: flex; gap: 12px;">
+                                <div class="material-icon-box">
+                                    <span class="material-icons material-icon">extension</span>
+                                </div>
+                                <div style="flex-grow: 1;">
+                                    <div style="display: flex; justify-content: space-between;">
+                                        <div style="font-weight: bold; font-size: 16px;">{{ comp.name }}</div>
+                                        <div style="display: flex; gap: 4px;">
+                                            <div v-if="comp.cost" style="font-weight: bold; color: var(--ha-success-color); margin-right: 8px;">{{ comp.cost.toLocaleString() }} {{ t('frontend.currency_symbol') }}</div>
+                                            <span class="material-icons" style="font-size: 18px; color: var(--ha-text-secondary-color);">edit</span>
+                                            <span class="material-icons" style="font-size: 18px; color: var(--ha-error-color); opacity: 0.7;" @click.stop="deleteMaterialDirect(comp)">delete</span>
+                                        </div>
+                                    </div>
+                                    <div v-if="comp.partNumber" style="font-size: 12px; color: var(--ha-text-secondary-color)">{{ comp.partNumber }}</div>
+                                    <div v-if="comp.quantity" style="font-size: 12px; color: var(--ha-text-secondary-color)">{{ t('frontend.quantity') || 'Кол-во' }}: {{ comp.quantity }}</div>
+                                    <div v-if="comp.description" style="margin-top: 4px; font-size: 13px; color: var(--ha-text-secondary-color)">{{ comp.description }}</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div v-if="!currentComponents.length" style="text-align: center; color: var(--ha-text-secondary-color); margin-top: 20px;">{{ t('frontend.materials_empty') }}</div>
+                    </div>
+                </div>
+
+                <!-- Floating Action Button for Details View -->
+                <div class="fab" @click="detailTab === 'tasks' ? openTaskEdit(null) : (detailTab === 'history' ? openHistoryEdit(null) : openMaterialEdit(null))">
+                    <span class="material-icons">add</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Enter Code Modal -->
+        <transition name="modal">
+        <div v-if="showEnterCodeModal" class="modal-overlay" @click.self="showEnterCodeModal = false">
+            <div class="modal" style="max-width: 400px;">
+                <div class="modal-header">
+                    <h2>{{ t('frontend.enter_transfer_code_title') }}</h2>
+                    <span class="material-icons" style="cursor: pointer" @click="showEnterCodeModal = false">close</span>
+                </div>
+                <div class="modal-content">
+                    <p style="font-size: 13px; color: var(--ha-text-secondary-color); margin-bottom: 24px;">{{ t('frontend.enter_transfer_code_desc') }}</p>
+                    <div class="form-group">
+                        <input v-model="enterCodeInput" placeholder="000000" maxlength="6" style="text-align: center; font-size: 32px; letter-spacing: 8px; font-weight: bold;">
+                    </div>
+                </div>
+                <div class="btn-row">
+                    <button @click="showEnterCodeModal = false">{{ t('frontend.cancel') }}</button>
+                    <button class="btn-primary" @click="applyTransferCode" :disabled="enterCodeInput.length !== 6 || isApplyingCode">
+                        {{ isApplyingCode ? '...' : t('frontend.apply_action') }}
+                    </button>
+                </div>
+            </div>
+        </div>
+        </transition>
+
+        <!-- Equipment Edit Modal -->
+        <transition name="modal">
+        <div v-if="showEditModal" class="modal-overlay" @click.self="showEditModal = false">
+            <div class="modal">
+                <div class="modal-header">
+                    <h2>{{ editForm.id ? t('frontend.edit') : t('frontend.add') }} {{ t('frontend.equipment') }}</h2>
+                    <span class="material-icons" style="cursor: pointer" @click="showEditModal = false">close</span>
+                </div>
+                <div class="modal-content">
+                    <!-- Priority Maintenance Info -->
+                    <div v-if="editForm.nextServiceDate" class="inner-card" style="background: rgba(3, 169, 244, 0.05); border: 1px solid rgba(3, 169, 244, 0.1); margin-bottom: 20px;">
+                        <div class="section-header" style="color: var(--ha-primary-color)">{{ t('frontend.next_maintenance_label') }}</div>
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <span class="material-icons" style="color: var(--ha-primary-color)">event</span>
+                            <div>
+                                <div style="font-weight: bold; font-size: 16px;">{{ dayjs(editForm.nextServiceDate).format('D MMMM YYYY') }}</div>
+                                <div style="font-size: 13px; color: var(--ha-text-secondary-color)">{{ editForm.nextServiceTask }}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group"><label>{{ t('frontend.name') }}</label><input v-model="editForm.name"></div>
+                    <div class="item-row">
+                        <div class="form-group"><label>{{ t('frontend.brand_manufacturer') }}</label><input v-model="editForm.brand"></div>
+                        <div class="form-group"><label>{{ t('frontend.model_label') || 'Модель' }}</label><input v-model="editForm.model"></div>
+                    </div>
+                    <div class="item-row">
+                        <div class="form-group"><label>{{ t('frontend.equipment_type') }}</label><input v-model="editForm.type"></div>
+                        <div class="form-group">
+                            <label>{{ t('frontend.location_ha') }}</label>
+                            <select v-model="editForm.location">
+                                <option value="">{{ t('frontend.no_location_selected') }}</option>
+                                <option v-for="loc in data.locations" :key="loc.id" :value="loc.name">{{ loc.name }}</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="item-row">
+                        <div class="form-group"><label>{{ t('frontend.installation_date') }}</label><input type="date" v-model="editForm.installationDate"></div>
+                    </div>
+                    <div class="form-group"><label>{{ t('frontend.documentation_url') }}</label><input v-model="editForm.documentationUrl"></div>
+                    <div class="form-group">
+                        <label>{{ t('frontend.rules_instructions') }}</label>
+                        <textarea v-model="editForm.importantRulesText" rows="4"></textarea>
+                    </div>
+                </div>
+                <div class="btn-row">
+                    <button class="btn-danger" v-if="editForm.id" @click="deleteEquipment">{{ t('frontend.delete') }}</button>
+                    <div style="flex-grow: 1;"></div>
+                    <button @click="showEditModal = false">{{ t('frontend.cancel') }}</button>
+                    <button class="btn-primary" @click="saveEquipment">{{ t('frontend.save') }}</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Task Edit Modal -->
+        <div v-if="showTaskModal" class="modal-overlay" @click.self="showTaskModal = false">
+            <div class="modal">
+                <div class="modal-header">
+                    <h2>{{ taskForm.id ? t('frontend.edit') : t('frontend.add') }} {{ t('frontend.service_task') }}</h2>
+                    <span class="material-icons" style="cursor: pointer" @click="showTaskModal = false">close</span>
+                </div>
+                <div class="modal-content">
+                    <div class="form-group"><label>{{ t('frontend.task_name') }}</label><input v-model="taskForm.taskName"></div>
+
+                    <div class="form-group">
+                        <label style="display: flex; align-items: center; gap: 8px; text-transform: none; font-size: 14px;">
+                            <input type="checkbox" v-model="taskForm.isOneTime" style="width: 20px; height: 20px;">
+                            {{ t('frontend.one_time_task') }}
+                        </label>
+                    </div>
+
+                    <div class="item-row">
+                        <div class="form-group">
+                            <label>{{ t('frontend.periodicity') }}</label>
+                            <div style="display: flex; gap: 8px;">
+                                <input type="number" v-model="taskForm.periodValue" :disabled="taskForm.isOneTime" style="width: 70px;">
+                                <select v-model="taskForm.periodUnit" :disabled="taskForm.isOneTime">
+                                    <option value="day">{{ t('frontend.unit_day') }}</option>
+                                    <option value="week">{{ t('frontend.unit_week') }}</option>
+                                    <option value="month">{{ t('frontend.unit_month') }}</option>
+                                    <option value="year">{{ t('frontend.unit_year') }}</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group"><label>{{ getEstCostLabel() }}</label><input type="number" v-model="taskForm.estimatedCost"></div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>{{ t('frontend.last_maintenance_date_label') || 'Дата последнего обслуживания' }}</label>
+                        <input type="date" v-model="taskForm.lastCompletedDate">
+                    </div>
+
+                    <div class="form-group">
+                        <label>{{ t('frontend.next_maintenance_label') || 'Следующее обслуживание' }}</label>
+                        <input type="date" v-model="taskForm.manualNextDate">
+                        <div style="font-size: 11px; color: var(--ha-text-secondary-color); margin-top: 4px;">{{ t('frontend.manual_date_supporting_text') || 'Дата рассчитывается автоматически, но её можно изменить вручную' }}</div>
+                    </div>
+
+                    <div v-if="currentComponents && currentComponents.length" class="form-group">
+                        <label>{{ t('frontend.tab_materials') }}</label>
+                        <select @change="addTaskMaterial($event.target.value); $event.target.value=''">
+                            <option value="">{{ t('frontend.select_material_placeholder') || 'Выберите материал...' }}</option>
+                            <option v-for="c in currentComponents" :key="c.id" :value="c.name" :disabled="taskForm.requiredComponents.includes(c.name)">{{ c.name }}</option>
+                        </select>
+                        <div style="display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px;">
+                            <div v-for="rc in taskForm.requiredComponents" :key="rc" class="chip" style="display: flex; align-items: center; gap: 4px;">
+                                {{ rc }}
+                                <span class="material-icons" style="font-size: 14px; cursor: pointer" @click="removeTaskMaterial(rc)">close</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group"><label>{{ t('frontend.instructions_label') }}</label><textarea v-model="taskForm.instructionsText" rows="4" :placeholder="t('frontend.instructions_placeholder')"></textarea></div>
+                </div>
+                <div class="btn-row">
+                    <button class="btn-danger" v-if="taskForm.id" @click="deleteTask">{{ t('frontend.delete') }}</button>
+                    <div style="flex-grow: 1;"></div>
+                    <button @click="showTaskModal = false">{{ t('frontend.cancel') }}</button>
+                    <button class="btn-primary" @click="saveTask">{{ t('frontend.save') }}</button>
+                </div>
+            </div>
+        </div>
+        </transition>
+
+        <!-- Material Edit Modal -->
+        <transition name="modal">
+        <div v-if="showMaterialModal" class="modal-overlay" @click.self="showMaterialModal = false">
+            <div class="modal">
+                <div class="modal-header">
+                    <h2>{{ materialForm.id ? t('frontend.edit') : t('frontend.add') }} {{ t('frontend.material_spare') }}</h2>
+                    <span class="material-icons" style="cursor: pointer" @click="showMaterialModal = false">close</span>
+                </div>
+                <div class="modal-content">
+                    <div class="form-group"><label>{{ t('frontend.material_spare') }}</label><input v-model="materialForm.name"></div>
+                    <div class="item-row">
+                        <div class="form-group"><label>{{ t('frontend.part_number') }}</label><input v-model="materialForm.partNumber"></div>
+                        <div class="form-group"><label>{{ t('frontend.current_cost') }}</label><input type="number" v-model="materialForm.cost"></div>
+                    </div>
+                    <div class="form-group"><label>{{ t('frontend.description') }}</label><input v-model="materialForm.description"></div>
+                    <div class="form-group"><label>{{ t('frontend.quantity') }}</label><input v-model="materialForm.quantity"></div>
+                </div>
+                <div class="btn-row">
+                    <button class="btn-danger" v-if="materialForm.id" @click="deleteMaterial">{{ t('frontend.delete') }}</button>
+                    <div style="flex-grow: 1;"></div>
+                    <button @click="showMaterialModal = false">{{ t('frontend.cancel') }}</button>
+                    <button class="btn-primary" @click="saveMaterial">{{ t('frontend.save') }}</button>
+                </div>
+            </div>
+        </div>
+        </transition>
+
+        <!-- Complete / Edit Log Task Modal -->
+        <transition name="modal">
+        <div v-if="showCompleteModal" class="modal-overlay" @click.self="showCompleteModal = false">
+            <div class="modal">
+                <div class="modal-header">
+                    <h2>{{ completeForm.id ? t('frontend.edit_log') : (activeTask ? t('frontend.completion') + ': ' + activeTask.taskName : t('frontend.add_log')) }}</h2>
+                    <span class="material-icons" style="cursor: pointer" @click="showCompleteModal = false">close</span>
+                </div>
+                <div class="modal-content">
+                    <div v-if="!activeTask && !completeForm.id" class="form-group">
+                        <label>{{ t('frontend.task_name') }}</label>
+                        <input v-model="completeForm.taskName" :placeholder="t('frontend.enter_task_name_placeholder')">
+                    </div>
+                    <div v-else-if="completeForm.id" class="form-group">
+                         <label>{{ t('frontend.task_name') }}</label>
+                         <input v-model="completeForm.taskName">
+                    </div>
+
+                    <div class="form-group">
+                        <label>{{ t('frontend.date') }}</label>
+                        <input type="date" v-model="completeForm.completionDate">
+                    </div>
+
+                    <div class="form-group">
+                        <label>{{ t('frontend.used_materials') }}</label>
+                        <select @change="addUsedMaterial($event.target.value); $event.target.value=''">
+                            <option value="">{{ t('frontend.select_material_placeholder') || 'Выберите материал...' }}</option>
+                            <option v-for="c in currentComponents" :key="c.id" :value="c.id" :disabled="completeForm.selectedMaterials.some(m => m.id === c.id)">{{ c.name }}</option>
+                            <option value="ADD_CUSTOM" style="font-weight: bold; color: var(--ha-primary-color);">+ {{ t('frontend.add_manually') || 'Добавить вручную...' }}</option>
+                        </select>
+
+                        <div style="margin-top: 12px;">
+                            <div v-for="m in completeForm.selectedMaterials" :key="m.id" class="used-material-row">
+                                <div class="used-material-name">{{ m.name }}</div>
+                                <div class="used-material-cost">
+                                    <input type="number" v-model="m.cost" placeholder="0" style="padding: 2px; text-align: right; font-size: 14px;">
+                                </div>
+                                <span class="material-icons" style="font-size: 18px; cursor: pointer; color: var(--ha-text-secondary-color)" @click="removeUsedMaterial(m.id)">close</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group"><label>{{ t('frontend.comment_label') }}</label><textarea v-model="completeForm.comment" rows="2" :placeholder="t('frontend.optional')"></textarea></div>
+
+                    <div class="form-group"><label>{{ t('frontend.labor_cost') }} ({{ t('frontend.currency_symbol') }})</label><input type="number" v-model="completeForm.cost"></div>
+
+                    <div class="grand-total-row">
+                        <div class="grand-total-label">{{ t('frontend.grand_total_label') }}</div>
+                        <div class="grand-total-value">{{ calculateGrandTotal().toLocaleString() }} {{ t('frontend.currency_symbol') }}</div>
+                    </div>
+                </div>
+                <div class="btn-row">
+                    <button class="btn-danger" v-if="completeForm.id" @click="deleteHistoryEntry">{{ t('frontend.delete') }}</button>
+                    <div style="flex-grow: 1;"></div>
+                    <button @click="showCompleteModal = false">{{ t('frontend.cancel') }}</button>
+                    <button class="btn-primary" :style="{background: 'var(--ha-success-color)'}" @click="submitCompletion">{{ t('frontend.confirm') }}</button>
+                </div>
+            </div>
+        </div>
+        </transition>
+
+        <!-- Report Modal -->
+        <transition name="modal">
+        <div v-if="showReportModal" class="modal-overlay" @click.self="showReportModal = false">
+            <div class="modal" :style="{maxWidth: isReportGenerated ? '800px' : '500px'}">
+                <div class="modal-header">
+                    <h2>{{ t('frontend.generate_report_title') }}</h2>
+                    <span class="material-icons" style="cursor: pointer" @click="showReportModal = false">close</span>
+                </div>
+                <div class="modal-content">
+                    <div v-if="!isReportGenerated">
+                        <div class="form-group">
+                            <label>{{ t('frontend.report_period_label') }}</label>
+                            <div class="item-row">
+                                <input type="date" v-model="reportForm.startDate">
+                                <input type="date" v-model="reportForm.endDate">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>{{ t('frontend.equipment') }}</label>
+                            <select v-model="reportForm.equipmentId">
+                                <option :value="null">{{ t('frontend.all_equipment') }}</option>
+                                <option v-for="eq in data.equipment" :key="eq.id" :value="eq.id">{{ eq.name }}</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div v-else>
+                        <div v-if="reportResults.length">
+                            <table class="report-table">
+                                <thead>
+                                    <tr>
+                                        <th>{{ t('frontend.report_date') }}</th>
+                                        <th>{{ t('frontend.report_equipment') }}</th>
+                                        <th>{{ t('frontend.report_task') }}</th>
+                                        <th style="text-align: right;">{{ t('frontend.report_cost') }}</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr v-for="entry in reportResults" :key="entry.id">
+                                        <td>{{ dayjs(entry.completionDate).format('DD.MM.YYYY') }}</td>
+                                        <td>{{ entry.equipmentName }}</td>
+                                        <td>{{ entry.taskName }}</td>
+                                        <td style="text-align: right;">{{ (entry.cost + entry.materialCost).toLocaleString() }} {{ t('frontend.currency_symbol') }}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            <div class="report-total-row">
+                                <div style="font-weight: bold;">{{ t('frontend.report_total_cost') }}</div>
+                                <div class="cost-value">{{ reportTotalCost.toLocaleString() }} {{ t('frontend.currency_symbol') }}</div>
+                            </div>
+                        </div>
+                        <div v-else style="text-align: center; padding: 40px; color: var(--ha-text-secondary-color);">
+                            {{ t('frontend.report_empty') }}
+                        </div>
+                    </div>
+                </div>
+                <div class="btn-row">
+                    <button v-if="isReportGenerated" @click="isReportGenerated = false">{{ t('frontend.back') || 'Назад' }}</button>
+                    <div style="flex-grow: 1;"></div>
+                    <button @click="showReportModal = false">{{ t('frontend.cancel') }}</button>
+                    <button class="btn-primary" @click="generateReport" v-if="!isReportGenerated">{{ t('frontend.show_report_btn') }}</button>
+                </div>
+            </div>
+        </div>
+        </transition>
+
+        <!-- Add Equipment Wizard -->
+        <transition name="modal">
+        <div v-if="showWizard" class="modal-overlay" @click.self="closeWizard">
+            <div class="modal">
+                <div class="modal-header">
+                    <h2>{{ t('frontend.new_equipment_title') }}</h2>
+                    <span class="material-icons" style="cursor: pointer" @click="closeWizard">close</span>
+                </div>
+
+                <div class="tab-row" style="position: static; background: var(--ha-card-background); flex-shrink: 0;">
+                    <div class="tab" :class="{active: wizardTab === 'ai'}" @click="wizardTab = 'ai'">{{ t('frontend.fill_with_ai') }}</div>
+                    <div class="tab" :class="{active: wizardTab === 'manual'}" @click="wizardTab = 'manual'">{{ t('frontend.fill_manually') }}</div>
+                    <div class="tab" :class="{active: wizardTab === 'ha'}" @click="wizardTab = 'ha'">Home Assistant</div>
+                </div>
+
+                <div class="modal-content">
+                    <!-- AI TAB -->
+                    <div v-if="wizardTab === 'ai'">
+                        <div v-if="wizardState === 'idle'">
+                            <!-- Attempts Bar -->
+                            <div class="attempts-bar" v-if="data.remaining_attempts !== null">
+                                <div class="attempts-label">
+                                    <span class="material-icons" style="font-size: 18px;">auto_awesome</span>
+                                    {{ t('frontend.ai_limit_label')?.replace('%1$d', data.remaining_attempts) || 'Лимит ИИ: ' + data.remaining_attempts }}
+                                </div>
+                                <div class="expiry-label" v-if="data.expiry_date">
+                                    {{ t('frontend.until_date_fmt')?.replace('%1$s', dayjs(data.expiry_date).format('D MMMM YYYY')) || 'до ' + dayjs(data.expiry_date).format('DD.MM.YYYY') }}
+                                </div>
+                            </div>
+
+                            <div class="inner-card">
+                                <div class="section-header">{{ t('frontend.equipment_data_header') }}</div>
+                                <div class="form-group">
+                                    <label>{{ t('frontend.model_name_label') }}</label>
+                                    <input v-model="wizardData.modelName" :placeholder="t('frontend.model_name_placeholder')">
+                                </div>
+
+                                <div class="item-row">
+                                    <div class="form-group">
+                                        <label>{{ t('frontend.installation_date_label') }}</label>
+                                        <input type="date" v-model="manualForm.installationDate">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>{{ t('frontend.location_label') }}</label>
+                                        <select v-model="manualForm.location">
+                                            <option v-for="loc in data.locations" :key="loc.id" :value="loc.name">{{ loc.name }}</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- PDF Upload Card -->
+                            <div class="inner-card">
+                                <div class="section-header">{{ t('frontend.upload_instruction_pdf_header') }}</div>
+                                <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+                                    <input v-model="wizardData.pdfUrl" :placeholder="t('frontend.pdf_link_placeholder')" style="flex-grow: 1;">
+                                    <button class="btn-primary" style="width: 52px; padding: 0;" @click="processUrl(wizardData.pdfUrl)" :disabled="!wizardData.modelName || !wizardData.pdfUrl">
+                                        <span class="material-icons">link</span>
+                                    </button>
+                                </div>
+                                <input type="file" id="pdf-upload" accept=".pdf" style="display: none" @change="handlePdfUpload">
+                                <button class="btn-primary" style="width: 100%; background: rgba(3,169,244,0.1); color: var(--ha-primary-color);" @click="triggerPdfUpload" :disabled="!wizardData.modelName">
+                                    <div style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+                                        <span class="material-icons">file_upload</span>
+                                        {{ t('frontend.choose_file_from_phone') }}
+                                    </div>
+                                </button>
+                            </div>
+
+                            <!-- Info Box -->
+                            <div class="info-box">
+                                <div class="info-item">
+                                    <span class="material-icons" style="color: var(--ha-text-secondary-color)">info</span>
+                                    <span>{{ t('frontend.verify_manual_info') }}</span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="material-icons" style="color: var(--ha-error-color)">warning</span>
+                                    <span style="font-weight: bold;">{{ t('frontend.ai_error_warning') }}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div v-if="wizardState === 'processing'" style="text-align: center; padding: 40px;">
+                            <div class="processing-icon-container">
+                                <span class="material-icons" :class="processingIconClass">{{ processingIcon }}</span>
+                            </div>
+                            <p style="font-weight: bold; margin-bottom: 4px;">{{ processingMessage }}</p>
+                            <p style="font-size: 12px; color: var(--ha-text-secondary-color); margin-top: 0; margin-bottom: 16px;">
+                                {{ t('frontend.ai_processing_time_warning') }}
+                            </p>
+
+                            <div style="width: 100%; background: var(--ha-divider-color); height: 8px; border-radius: 4px; overflow: hidden;">
+                                <div :style="{width: (processingProgress * 100) + '%'}" style="height: 100%; background: var(--ha-primary-color); transition: width 0.3s;"></div>
+                            </div>
+
+                            <button class="btn-danger" style="margin-top: 32px; font-weight: bold;" @click="abortAnalysis">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span class="material-icons">stop</span>
+                                    {{ t('frontend.interrupt_action') }}
+                                </div>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- MANUAL TAB -->
+                    <div v-if="wizardTab === 'manual'">
+                        <div class="inner-card">
+                            <div class="section-header">{{ t('frontend.main_info_header') }}</div>
+                            <div class="form-group"><label>{{ t('frontend.equipment_name_label') }} *</label><input v-model="manualForm.name"></div>
+                            <div class="form-group"><label>{{ t('frontend.brand_label') }}</label><input v-model="manualForm.brand"></div>
+                            <div class="item-row">
+                                <div class="form-group"><label>{{ t('frontend.device_type_label') }}</label><input v-model="manualForm.type"></div>
+                                <div class="form-group"><label>{{ t('frontend.model_label') }}</label><input v-model="manualForm.model"></div>
+                            </div>
+                            <div class="item-row">
+                                <div class="form-group"><label>{{ t('frontend.installation_date_label') }}</label><input type="date" v-model="manualForm.installationDate"></div>
+                                <div class="form-group">
+                                    <label>{{ t('frontend.location_optional_label') }}</label>
+                                    <select v-model="manualForm.location">
+                                        <option value="">{{ t('frontend.no_location_selected') }}</option>
+                                        <option v-for="loc in data.locations" :key="loc.id" :value="loc.name">{{ loc.name }}</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="inner-card">
+                            <div class="section-header">{{ t('frontend.instruction_optional_header') }}</div>
+                            <div class="form-group"><label>{{ t('frontend.pdf_link_label') }}</label><input v-model="manualForm.pdfUrl"></div>
+                            <input type="file" id="manual-pdf-upload" accept=".pdf" style="display: none" @change="manualForm.hasFile = true">
+                            <button class="btn-primary" style="background: rgba(117,117,117,0.1); color: var(--ha-text-primary-color);" @click="document.getElementById('manual-pdf-upload').click()">
+                                <div style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+                                    <span class="material-icons">attach_file</span>
+                                    {{ t('frontend.select_file_btn') }}
+                                    <span v-if="manualForm.hasFile" class="material-icons" style="color: var(--ha-success-color); font-size: 16px;">check_circle</span>
+                                </div>
+                            </button>
+                        </div>
+
+                        <button class="btn-primary" style="width: 100%; height: 56px; margin-top: 16px;" @click="saveManual" :disabled="!manualForm.name">
+                            {{ t('frontend.add_equipment_btn') }}
+                        </button>
+                    </div>
+
+                    <!-- HA IMPORT TAB -->
+                    <div v-if="wizardTab === 'ha'">
+                        <div class="form-group">
+                            <input v-model="haSearchQuery" placeholder="Search HA devices..." style="border-radius: 12px; padding-left: 40px;">
+                            <span class="material-icons" style="position: absolute; margin-top: -34px; margin-left: 12px; color: var(--ha-text-secondary-color);">filter_list</span>
+                        </div>
+
+                        <div class="section-header" v-if="filteredHaDevices.length">{{ t('frontend.ha_devices_header')?.replace('%1$d', filteredHaDevices.length) }}</div>
+
+                        <div v-for="dev in filteredHaDevices" :key="dev.id" class="ha-device-card" @click="selectHaDevice(dev)">
+                            <div class="ha-icon-box"><span class="material-icons">settings_input_component</span></div>
+                            <div style="flex-grow: 1;">
+                                <div style="font-weight: bold;">{{ dev.name }}</div>
+                                <div style="font-size: 12px; color: var(--ha-text-secondary-color)">{{ dev.brand }} {{ dev.model }} • {{ dev.area || t('frontend.no_location') }}</div>
+                            </div>
+                            <span class="material-icons" style="color: var(--ha-divider-color)">chevron_right</span>
+                        </div>
+
+                        <div v-if="!filteredHaDevices.length" style="text-align: center; padding: 20px; color: var(--ha-text-secondary-color);">
+                            {{ t('frontend.no_devices_found') || 'Устройства не найдены' }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        </transition>
+
+        <!-- Purchase Modal -->
+        <transition name="modal">
+        <div v-if="showPurchaseModal" class="modal-overlay" @click.self="closePurchaseModal">
+            <div class="modal" style="max-width: 600px;">
+                <div class="modal-header">
+                    <h2>{{ t('frontend.purchase_attempts_title') || 'Покупка попыток' }}</h2>
+                    <span class="material-icons" style="cursor: pointer" @click="closePurchaseModal">close</span>
+                </div>
+                <div class="modal-content" style="background: var(--ha-background-color);">
+                    <!-- Balance Display -->
+                    <div class="balance-card" style="margin-bottom: 24px;">
+                        <div class="balance-label">{{ t('frontend.your_balance_label') }}</div>
+                        <div class="balance-value">
+                            {{ data.remaining_attempts }} {{ getRequestsLabel(data.remaining_attempts) }}
+                        </div>
+                        <div class="balance-expiry" v-if="data.expiry_date">
+                            {{ t('frontend.expiry_active_until')?.replace('%s', dayjs(data.expiry_date).format('DD.MM.YYYY')) }}
+                        </div>
+                    </div>
+
+                    <!-- Loading State -->
+                    <div v-if="purchaseLoading && packages.length === 0" style="text-align: center; padding: 40px;">
+                        <span class="material-icons anim-spin">sync</span>
+                        <p style="margin-top: 16px; color: var(--ha-text-secondary-color);">{{ t('frontend.loading_packages') || 'Загрузка пакетов...' }}</p>
+                    </div>
+
+                    <!-- Packages List -->
+                    <div v-else-if="packages.length" style="display: flex; flex-direction: column; gap: 16px;">
+                        <div v-for="pkg in packages" :key="pkg.id" class="package-card" :class="{ 'package-hit': pkg.is_hit, 'package-disabled': !isPaymentsEnabled }" @click="!isPaymentsEnabled || purchaseProcessing ? null : buyPackage(pkg)">
+                            <div class="package-card-header">
+                                <div class="package-info">
+                                    <div v-if="pkg.is_hit" class="package-hit-badge">{{ t('frontend.best_seller_label') || 'Хит продаж' }}</div>
+                                    <div class="package-name">{{ pkg.name }}</div>
+                                    <div class="package-description">{{ pkg.description }}</div>
+                                </div>
+                                <div class="package-price">{{ formatPrice(pkg.price, pkg.currency) }}</div>
+                            </div>
+                            <div class="package-card-footer">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span class="material-icons" style="font-size: 20px; color: var(--ha-primary-color);">star</span>
+                                    <span style="font-size: 14px; font-weight: bold;">{{ pkg.attempts }} {{ getRequestsLabel(pkg.attempts) }}</span>
+                                </div>
+                                <div style="font-size: 12px; color: var(--ha-text-secondary-color);">{{ t('frontend.package_expiry_note') || 'Действует 30 дней' }}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Payments Disabled Message -->
+                    <div v-if="!isPaymentsEnabled" style="text-align: center; padding: 40px; background: rgba(3, 169, 244, 0.05); border-radius: 16px; margin-top: 16px;">
+                        <span class="material-icons" style="font-size: 48px; color: var(--ha-primary-color); opacity: 0.5;">schedule</span>
+                        <p style="margin-top: 16px; font-size: 16px; font-weight: bold; color: var(--ha-text-primary-color);">{{ t('frontend.payments_coming_soon') || 'Покупка попыток ИИ будет доступна в ближайшее время' }}</p>
+                        <p style="margin-top: 8px; font-size: 14px; color: var(--ha-text-secondary-color);">{{ t('frontend.please_check_back_later') || 'Пожалуйста, зайдите позже' }}</p>
+                    </div>
+
+                    <!-- No Packages / Payments Disabled -->
+                    <div v-else-if="!purchaseLoading && !packages.length" style="text-align: center; padding: 40px; color: var(--ha-text-secondary-color);">
+                        {{ t('frontend.no_packages_available') || 'Пакеты недоступны' }}
+                    </div>
+
+                    <!-- Payment Status Messages -->
+                    <div v-if="purchaseMessage" style="margin-top: 16px; padding: 12px; border-radius: 12px; background: rgba(219, 68, 55, 0.1); color: var(--ha-error-color); text-align: center;">
+                        {{ purchaseMessage }}
+                    </div>
+                    <div v-if="purchaseSuccess" style="margin-top: 16px; padding: 12px; border-radius: 12px; background: rgba(67, 160, 71, 0.1); color: var(--ha-success-color); text-align: center;">
+                        {{ t('frontend.payment_success_msg') || 'Оплата успешна!' }}
+                    </div>
+                </div>
+                <div class="btn-row">
+                    <button @click="closePurchaseModal">{{ t('frontend.close') || 'Закрыть' }}</button>
+                </div>
+            </div>
+        </div>
+        </transition>
+
+        <!-- Confirm Dialog -->
+        <transition name="modal">
+        <div v-if="confirmDialog.show" class="modal-overlay" style="z-index: 2000;">
+            <div class="modal" style="max-width: 400px;">
+                <div class="modal-header">
+                    <h2 v-if="confirmDialog.title">{{ confirmDialog.title }}</h2>
+                    <h2 v-else>{{ t('frontend.confirmation') || 'Подтверждение' }}</h2>
+                </div>
+                <div class="modal-content" style="background: var(--ha-card-background); padding: 24px; text-align: center;">
+                    {{ confirmDialog.message }}
+                </div>
+                <div class="btn-row">
+                    <button @click="confirmDialog.onCancel">{{ t('frontend.cancel') }}</button>
+                    <button :class="confirmDialog.isDanger ? 'btn-danger' : 'btn-primary'" @click="confirmDialog.onConfirm">
+                        {{ confirmDialog.confirmText || t('frontend.confirm') }}
+                    </button>
+                </div>
+            </div>
+        </div>
+        </transition>
+    </div>
+
+    <script type="module" src="./js/app.js"></script>
+</body>
+</html>
