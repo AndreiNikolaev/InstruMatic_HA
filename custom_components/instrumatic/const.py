@@ -13,7 +13,6 @@ DATA_COORDINATOR = "instrumatic_coordinator"
 STORAGE_VERSION = 1
 STORAGE_KEY = "instrumatic.storage"
 
-# Backend configuration
-BACKEND_URL = "http://192.168.50.183:8000/"  # Local backend
-# BACKEND_URL = "http://192.168.50.2:8000/"  # Local backend (localhost)
-# BACKEND_URL = "https://api.instrumatic.ru/"  # Cloud backend
+# AI Backend configuration
+
+BACKEND_URL = "https://api.instrumatic.ru/"  # Cloud backend
