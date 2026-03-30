@@ -131,6 +131,3 @@ MIT License — see [LICENSE](LICENSE) for details.
 - [Home Assistant](https://www.home-assistant.io/) — Great smart home platform
 - [HACS](https://hacs.xyz/) — Makes custom integrations easy to install
 
----
-
-**Made with ❤️ for your smart home**
