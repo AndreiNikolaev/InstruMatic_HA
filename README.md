@@ -111,15 +111,6 @@ custom_components/instrumatic/
         └── api.js
 ```
 
-## 🔧 Backend Configuration
-
-By default, the integration uses a local backend. To change, edit `const.py`:
-
-```python
-BACKEND_URL = "http://192.168.50.183:8000/"  # Local
-# BACKEND_URL = "https://api.instrumatic.ru/"  # Cloud
-```
-
 ## 📱 Mobile App
 
 InstruMatic is also available as a mobile app for Android:
